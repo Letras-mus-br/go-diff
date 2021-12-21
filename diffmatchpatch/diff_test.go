@@ -316,6 +316,7 @@ func TestDiffLinesToChars(t *testing.T) {
 	for i, tc := range []TestCase{
 		{"", "alpha\r\nbeta\r\n\r\n\r\n", "", "1,2,3,3", []string{"", "alpha\r\n", "beta\r\n", "\r\n"}},
 		{"a", "b", "1", "2", []string{"", "a", "b"}},
+		{"alpha\r\nbeta", "alpha\r\nalpha\r\ngama", "1,2", "1,1,3", []string{"", "alpha\r\n", "beta", "gama"}},
 		// Omit final newline.
 		{"alpha\nbeta\nalpha", "", "1,2,3", "", []string{"", "alpha\n", "beta\n", "alpha"}},
 	} {
@@ -343,6 +344,51 @@ func TestDiffLinesToChars(t *testing.T) {
 	assert.Equal(t, chars, actualChars1)
 	assert.Equal(t, "", actualChars2)
 	assert.Equal(t, lineList, actualLines)
+}
+
+func TestDiffWordsToChars(t *testing.T) {
+	type TestCase struct {
+		Text1 string
+		Text2 string
+
+		ExpectedChars1 string
+		ExpectedChars2 string
+		ExpectedWords  []string
+	}
+
+	dmp := New()
+
+	for i, tc := range []TestCase{
+		{"", "alpha beta   ", "", "1,2,3,3", []string{"", "alpha ", "beta ", " "}},
+		{"a", "b", "1", "2", []string{"", "a", "b"}},
+		{"alpha beta", "alpha alpha gama", "1,2", "1,1,3", []string{"", "alpha ", "beta", "gama"}},
+		// Omit final space.
+		{"alpha beta alpha", "", "1,2,3", "", []string{"", "alpha ", "beta ", "alpha"}},
+	} {
+		actualChars1, actualChars2, actualLines := dmp.DiffWordsToChars(tc.Text1, tc.Text2)
+		assert.Equal(t, tc.ExpectedChars1, actualChars1, fmt.Sprintf("Test case #%d, %#v", i, tc))
+		assert.Equal(t, tc.ExpectedChars2, actualChars2, fmt.Sprintf("Test case #%d, %#v", i, tc))
+		assert.Equal(t, tc.ExpectedWords, actualLines, fmt.Sprintf("Test case #%d, %#v", i, tc))
+	}
+
+	// More than 256 to reveal any 8-bit limitations.
+	n := 300
+	wordList := []string{
+		"", // Account for the initial empty element of the lines array.
+	}
+	var charList []string
+	for x := 1; x < n+1; x++ {
+		wordList = append(wordList, strconv.Itoa(x)+" ")
+		charList = append(charList, strconv.Itoa(x))
+	}
+	words := strings.Join(wordList, "")
+	chars := strings.Join(charList[:], ",")
+	assert.Equal(t, n, len(strings.Split(chars, ",")))
+
+	actualChars1, actualChars2, actualWords := dmp.DiffWordsToChars(words, "")
+	assert.Equal(t, chars, actualChars1)
+	assert.Equal(t, "", actualChars2)
+	assert.Equal(t, wordList, actualWords)
 }
 
 func TestDiffCharsToLines(t *testing.T) {
