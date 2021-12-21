@@ -402,6 +402,12 @@ func (dmp *DiffMatchPatch) DiffLinesToRunes(text1, text2 string) ([]rune, []rune
 	return []rune(chars1), []rune(chars2), lineArray
 }
 
+// DiffWordsToChars splits two texts into a list of strings, and educes the texts to a string of hashes where each Unicode character represents one word.
+func (dmp *DiffMatchPatch) DiffWordsToChars(text1, text2 string) (string, string, []string) {
+	chars1, chars2, wordArray := dmp.diffWordsToStrings(text1, text2)
+	return chars1, chars2, wordArray
+}
+
 // DiffCharsToLines rehydrates the text in a diff from a string of line hashes to real lines of text.
 func (dmp *DiffMatchPatch) DiffCharsToLines(diffs []Diff, lineArray []string) []Diff {
 	hydrated := make([]Diff, 0, len(diffs))
@@ -1322,6 +1328,20 @@ func (dmp *DiffMatchPatch) diffLinesToStrings(text1, text2 string) (string, stri
 	return intArrayToString(strIndexArray1), intArrayToString(strIndexArray2), lineArray
 }
 
+// diffWordsToStrings splits two texts into a list of strings. Each string represents one word.
+func (dmp *DiffMatchPatch) diffWordsToStrings(text1, text2 string) (string, string, []string) {
+	// '\x00' is a valid character, but various debuggers don't like it. So we'll insert a junk entry to avoid generating a null character.
+	wordArray := []string{""} // e.g. wordArray[4] == 'Hello '
+	wordHash := make(map[string]int)
+	wordHash[""] = 0
+
+	//Each string has the index of wordArray which it points to
+	strIndexArray1 := dmp.diffWordsToStringsMunge(text1, &wordArray, wordHash)
+	strIndexArray2 := dmp.diffWordsToStringsMunge(text2, &wordArray, wordHash)
+
+	return intArrayToString(strIndexArray1), intArrayToString(strIndexArray2), wordArray
+}
+
 // diffLinesToStringsMunge splits a text into an array of strings, and reduces the texts to a []string.
 func (dmp *DiffMatchPatch) diffLinesToStringsMunge(text string, lineArray *[]string, lineHash map[string]int) []uint32 {
 	// Walk the text, pulling out a substring for each line. text.split('\n') would would temporarily double our memory footprint. Modifying text would create many large strings to garbage collect.
@@ -1346,6 +1366,36 @@ func (dmp *DiffMatchPatch) diffLinesToStringsMunge(text string, lineArray *[]str
 			*lineArray = append(*lineArray, line)
 			lineHash[line] = len(*lineArray) - 1
 			strs = append(strs, uint32(len(*lineArray)-1))
+		}
+	}
+
+	return strs
+}
+
+// diffWordsToStringsMunge splits a text into an array of strings, and reduces the texts to a []string.
+func (dmp *DiffMatchPatch) diffWordsToStringsMunge(text string, wordArray *[]string, wordHash map[string]int) []uint32 {
+	// Walk the text, pulling out a substring for each line. text.split('\n') would would temporarily double our memory footprint. Modifying text would create many large strings to garbage collect.
+	wordStart := 0
+	wordEnd := -1
+	strs := []uint32{}
+
+	for wordEnd < len(text)-1 {
+		wordEnd = indexOf(text, " ", wordStart)
+
+		if wordEnd == -1 {
+			wordEnd = len(text) - 1
+		}
+
+		word := text[wordStart : wordEnd+1]
+		wordStart = wordEnd + 1
+		wordValue, ok := wordHash[word]
+
+		if ok {
+			strs = append(strs, uint32(wordValue))
+		} else {
+			*wordArray = append(*wordArray, word)
+			wordHash[word] = len(*wordArray) - 1
+			strs = append(strs, uint32(len(*wordArray)-1))
 		}
 	}
 
