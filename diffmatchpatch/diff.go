@@ -35,7 +35,7 @@ const (
 	// DiffEqual item represents an equal diff.
 	DiffEqual Operation = 0
 	//IndexSeparator is used to seperate the array indexes in an index string
-	IndexSeparator = ","
+	IndexSeparator = rune(0)
 )
 
 // Diff represents one diff operation
@@ -412,13 +412,15 @@ func (dmp *DiffMatchPatch) DiffWordsToChars(text1, text2 string) (string, string
 func (dmp *DiffMatchPatch) DiffCharsToLines(diffs []Diff, lineArray []string) []Diff {
 	hydrated := make([]Diff, 0, len(diffs))
 	for _, aDiff := range diffs {
-		chars := strings.Split(aDiff.Text, IndexSeparator)
+		chars := strings.Split(aDiff.Text, string(IndexSeparator))
 		text := make([]string, len(chars))
 
-		for i, r := range chars {
-			i1, err := strconv.Atoi(r)
-			if err == nil {
-				text[i] = lineArray[i1]
+		for i, c := range chars {
+			for j, r := range c {
+				if j != 0 {
+					break
+				}
+				text[i] = lineArray[int(r)]
 			}
 		}
 
@@ -1316,8 +1318,7 @@ func (dmp *DiffMatchPatch) DiffFromDelta(text1 string, delta string) (diffs []Di
 
 // diffLinesToStrings splits two texts into a list of strings. Each string represents one line.
 func (dmp *DiffMatchPatch) diffLinesToStrings(text1, text2 string) (string, string, []string) {
-	// '\x00' is a valid character, but various debuggers don't like it. So we'll insert a junk entry to avoid generating a null character.
-	lineArray := []string{""} // e.g. lineArray[4] == 'Hello\n'
+	lineArray := []string{""}
 	lineHash := make(map[string]int)
 	lineHash[""] = 0
 
@@ -1330,8 +1331,7 @@ func (dmp *DiffMatchPatch) diffLinesToStrings(text1, text2 string) (string, stri
 
 // diffWordsToStrings splits two texts into a list of strings. Each string represents one word.
 func (dmp *DiffMatchPatch) diffWordsToStrings(text1, text2 string) (string, string, []string) {
-	// '\x00' is a valid character, but various debuggers don't like it. So we'll insert a junk entry to avoid generating a null character.
-	wordArray := []string{""} // e.g. wordArray[4] == 'Hello '
+	wordArray := []string{""}
 	wordHash := make(map[string]int)
 	wordHash[""] = 0
 
