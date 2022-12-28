@@ -1515,17 +1515,21 @@ func TestDiffMainWithCheckLines(t *testing.T) {
 	}
 }
 
-func TestMassiveRuneDiffConversion(t *testing.T) {
-	sNew, err := ioutil.ReadFile("../testdata/fixture.go")
+func TestMassiveRuneDiffConversionWords(t *testing.T) {
+	sNew, err := ioutil.ReadFile("../testdata/manywords.txt")
 	if err != nil {
 		panic(err)
 	}
 
 	dmp := New()
-	t1, t2, tt := dmp.DiffLinesToChars("", string(sNew))
+	t1, t2, tt := dmp.DiffWordsToChars("", string(sNew))
 	diffs := dmp.DiffMain(t1, t2, false)
 	diffs = dmp.DiffCharsToLines(diffs, tt)
 	assert.NotEmpty(t, diffs)
+	assert.Len(t, diffs, 1)
+	assert.Equal(t, diffs[0].Type, DiffInsert)
+
+	assert.Len(t, tt, 100000)
 }
 
 func BenchmarkDiffMain(bench *testing.B) {
