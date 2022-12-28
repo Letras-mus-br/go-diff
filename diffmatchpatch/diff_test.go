@@ -330,23 +330,28 @@ func TestDiffLinesToChars(t *testing.T) {
 	}
 
 	// More than 256 to reveal any 8-bit limitations.
-	/*n := 300
+	n := 300
 	lineList := []string{
 		"", // Account for the initial empty element of the lines array.
 	}
-	var charList []string
+	runeList := []rune{}
 	for x := 1; x < n+1; x++ {
 		lineList = append(lineList, strconv.Itoa(x)+"\n")
-		charList = append(charList, strconv.Itoa(x))
+		if x != 1 {
+			runeList = append(runeList, IndexSeparator)
+		}
+		runeList = append(runeList, rune(x))
 	}
+
+	assert.Equal(t, n, int(math.Round(float64(len(runeList))/2.0)))
+
 	lines := strings.Join(lineList, "")
-	chars := strings.Join(charList[:], ",")
-	assert.Equal(t, n, len(strings.Split(chars, ",")))
+	chars := string(runeList)
 
 	actualChars1, actualChars2, actualLines := dmp.DiffLinesToChars(lines, "")
 	assert.Equal(t, chars, actualChars1)
 	assert.Equal(t, "", actualChars2)
-	assert.Equal(t, lineList, actualLines)*/
+	assert.Equal(t, lineList, actualLines)
 }
 
 func TestDiffWordsToChars(t *testing.T) {
