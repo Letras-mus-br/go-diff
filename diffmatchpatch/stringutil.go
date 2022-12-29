@@ -9,7 +9,6 @@
 package diffmatchpatch
 
 import (
-	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -93,14 +92,13 @@ func intArrayToString(ns []uint32) string {
 		return ""
 	}
 
-	indexSeparator := IndexSeparator[0]
-
-	// Appr. 3 chars per num plus the comma.
-	b := []byte{}
-	for _, n := range ns {
-		b = strconv.AppendInt(b, int64(n), 10)
-		b = append(b, indexSeparator)
+	runes := make([]rune, 0)
+	for i, n := range ns {
+		if i != 0 {
+			runes = append(runes, IndexSeparator)
+		}
+		runes = append(runes, rune(n))
 	}
-	b = b[:len(b)-1]
-	return string(b)
+
+	return string(runes)
 }

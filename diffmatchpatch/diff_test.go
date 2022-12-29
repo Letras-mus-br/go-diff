@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -313,12 +314,14 @@ func TestDiffLinesToChars(t *testing.T) {
 
 	dmp := New()
 
+	sep := IndexSeparator
+
 	for i, tc := range []TestCase{
-		{"", "alpha\r\nbeta\r\n\r\n\r\n", "", "1,2,3,3", []string{"", "alpha\r\n", "beta\r\n", "\r\n"}},
-		{"a", "b", "1", "2", []string{"", "a", "b"}},
-		{"alpha\r\nbeta", "alpha\r\nalpha\r\ngama", "1,2", "1,1,3", []string{"", "alpha\r\n", "beta", "gama"}},
+		{"", "alpha\r\nbeta\r\n\r\n\r\n", "", string([]rune{1, sep, 2, sep, 3, sep, 3}), []string{"", "alpha\r\n", "beta\r\n", "\r\n"}},
+		{"a", "b", string([]rune{1}), string([]rune{2}), []string{"", "a", "b"}},
+		{"alpha\r\nbeta", "alpha\r\nalpha\r\ngama", string([]rune{1, sep, 2}), string([]rune{1, sep, 1, sep, 3}), []string{"", "alpha\r\n", "beta", "gama"}},
 		// Omit final newline.
-		{"alpha\nbeta\nalpha", "", "1,2,3", "", []string{"", "alpha\n", "beta\n", "alpha"}},
+		{"alpha\nbeta\nalpha", "", string([]rune{1, sep, 2, sep, 3}), "", []string{"", "alpha\n", "beta\n", "alpha"}},
 	} {
 		actualChars1, actualChars2, actualLines := dmp.DiffLinesToChars(tc.Text1, tc.Text2)
 		assert.Equal(t, tc.ExpectedChars1, actualChars1, fmt.Sprintf("Test case #%d, %#v", i, tc))
@@ -331,14 +334,19 @@ func TestDiffLinesToChars(t *testing.T) {
 	lineList := []string{
 		"", // Account for the initial empty element of the lines array.
 	}
-	var charList []string
+	runeList := []rune{}
 	for x := 1; x < n+1; x++ {
 		lineList = append(lineList, strconv.Itoa(x)+"\n")
-		charList = append(charList, strconv.Itoa(x))
+		if x != 1 {
+			runeList = append(runeList, IndexSeparator)
+		}
+		runeList = append(runeList, rune(x))
 	}
+
+	assert.Equal(t, n, int(math.Round(float64(len(runeList))/2.0)))
+
 	lines := strings.Join(lineList, "")
-	chars := strings.Join(charList[:], ",")
-	assert.Equal(t, n, len(strings.Split(chars, ",")))
+	chars := string(runeList)
 
 	actualChars1, actualChars2, actualLines := dmp.DiffLinesToChars(lines, "")
 	assert.Equal(t, chars, actualChars1)
@@ -358,12 +366,14 @@ func TestDiffWordsToChars(t *testing.T) {
 
 	dmp := New()
 
+	sep := IndexSeparator
+
 	for i, tc := range []TestCase{
-		{"", "alpha beta   ", "", "1,2,3,3", []string{"", "alpha ", "beta ", " "}},
-		{"a", "b", "1", "2", []string{"", "a", "b"}},
-		{"alpha beta", "alpha alpha gama", "1,2", "1,1,3", []string{"", "alpha ", "beta", "gama"}},
+		{"", "alpha beta   ", "", string([]rune{1, sep, 2, sep, 3, sep, 3}), []string{"", "alpha ", "beta ", " "}},
+		{"a", "b", string([]rune{1}), string([]rune{2}), []string{"", "a", "b"}},
+		{"alpha beta", "alpha alpha gama", string([]rune{1, sep, 2}), string([]rune{1, sep, 1, sep, 3}), []string{"", "alpha ", "beta", "gama"}},
 		// Omit final space.
-		{"alpha beta alpha", "", "1,2,3", "", []string{"", "alpha ", "beta ", "alpha"}},
+		{"alpha beta alpha", "", string([]rune{1, sep, 2, sep, 3}), "", []string{"", "alpha ", "beta ", "alpha"}},
 	} {
 		actualChars1, actualChars2, actualLines := dmp.DiffWordsToChars(tc.Text1, tc.Text2)
 		assert.Equal(t, tc.ExpectedChars1, actualChars1, fmt.Sprintf("Test case #%d, %#v", i, tc))
@@ -376,14 +386,19 @@ func TestDiffWordsToChars(t *testing.T) {
 	wordList := []string{
 		"", // Account for the initial empty element of the lines array.
 	}
-	var charList []string
-	for x := 1; x < n+1; x++ {
+	runeList := []rune{}
+	for x := 1; x <= n; x++ {
 		wordList = append(wordList, strconv.Itoa(x)+" ")
-		charList = append(charList, strconv.Itoa(x))
+
+		if x != 1 {
+			runeList = append(runeList, IndexSeparator)
+		}
+		runeList = append(runeList, rune(x))
 	}
+	assert.Equal(t, n, int(math.Round(float64(len(runeList))/2.0)))
+
+	chars := string(runeList)
 	words := strings.Join(wordList, "")
-	chars := strings.Join(charList[:], ",")
-	assert.Equal(t, n, len(strings.Split(chars, ",")))
 
 	actualChars1, actualChars2, actualWords := dmp.DiffWordsToChars(words, "")
 	assert.Equal(t, chars, actualChars1)
@@ -401,11 +416,14 @@ func TestDiffCharsToLines(t *testing.T) {
 
 	dmp := New()
 
+	diffEqual := []rune{rune(1), IndexSeparator, rune(2), IndexSeparator, rune(1)}
+	diffInsert := []rune{rune(2), IndexSeparator, rune(1), IndexSeparator, rune(2)}
+
 	for i, tc := range []TestCase{
 		{
 			Diffs: []Diff{
-				{DiffEqual, "1,2,1"},
-				{DiffInsert, "2,1,2"},
+				{DiffEqual, string(diffEqual)},
+				{DiffInsert, string(diffInsert)},
 			},
 			Lines: []string{"", "alpha\n", "beta\n"},
 
@@ -424,15 +442,18 @@ func TestDiffCharsToLines(t *testing.T) {
 	lineList := []string{
 		"", // Account for the initial empty element of the lines array.
 	}
-	charList := []string{}
+	runeList := []rune{}
 	for x := 1; x <= n; x++ {
 		lineList = append(lineList, strconv.Itoa(x)+"\n")
-		charList = append(charList, strconv.Itoa(x))
-	}
-	assert.Equal(t, n, len(charList))
-	chars := strings.Join(charList[:], ",")
 
-	actual := dmp.DiffCharsToLines([]Diff{Diff{DiffDelete, chars}}, lineList)
+		if x != 1 {
+			runeList = append(runeList, IndexSeparator)
+		}
+		runeList = append(runeList, rune(x))
+	}
+	assert.Equal(t, n, int(math.Round(float64(len(runeList))/2.0)))
+
+	actual := dmp.DiffCharsToLines([]Diff{Diff{DiffDelete, string(runeList)}}, lineList)
 	assert.Equal(t, []Diff{Diff{DiffDelete, strings.Join(lineList, "")}}, actual)
 }
 
@@ -1499,17 +1520,21 @@ func TestDiffMainWithCheckLines(t *testing.T) {
 	}
 }
 
-func TestMassiveRuneDiffConversion(t *testing.T) {
-	sNew, err := ioutil.ReadFile("../testdata/fixture.go")
+func TestMassiveRuneDiffConversionWords(t *testing.T) {
+	sNew, err := ioutil.ReadFile("../testdata/manywords.txt")
 	if err != nil {
 		panic(err)
 	}
 
 	dmp := New()
-	t1, t2, tt := dmp.DiffLinesToChars("", string(sNew))
+	t1, t2, tt := dmp.DiffWordsToChars("", string(sNew))
 	diffs := dmp.DiffMain(t1, t2, false)
 	diffs = dmp.DiffCharsToLines(diffs, tt)
 	assert.NotEmpty(t, diffs)
+	assert.Len(t, diffs, 1)
+	assert.Equal(t, diffs[0].Type, DiffInsert)
+
+	assert.Len(t, tt, 100000)
 }
 
 func BenchmarkDiffMain(bench *testing.B) {
